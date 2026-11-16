@@ -1,0 +1,5 @@
+# Faz o Apache carregar o painel de testes (index.html) quando a pasta
+# é acessada sem especificar um arquivo. A API continua funcionando
+# normalmente em index.php, só não é mais o que abre por padrão.
+# Só afeta esta pasta do projeto, não mexe na configuração geral do XAMPP.
+DirectoryIndex index.html index.php
