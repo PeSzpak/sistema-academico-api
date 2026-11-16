@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sistema Acadêmico - API de Alunos</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --border: #2a2e37;
+    --text: #e6e8eb;
+    --muted: #9aa1ac;
+    --accent: #4f8cff;
+    --ok: #35c46a;
+    --ok-bg: #10261b;
+    --err: #ff5c5c;
+    --err-bg: #2a1414;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: var(--muted); font-weight: 600; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    background: #0f1115;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: #2a2e37; color: var(--text); }
+  .btn-danger { background: var(--err); color: white; }
+  .btn-ok { background: var(--ok); color: #06210f; }
+  .row-actions { display: flex; gap: 6px; }
+  .form-actions { display: flex; gap: 8px; margin-top: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  code {
+    background: #0f1115;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #1c2b4a; color: #8fb4ff; }
+  .pill-err { background: #3a1414; color: #ff9d9d; }
+  .test-buttons { display: flex; flex-direction: column; gap: 8px; }
+  .test-buttons button { text-align: left; }
+  #log {
+    max-height: 360px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .log-entry {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .log-ok { border-color: var(--ok); background: var(--ok-bg); }
+  .log-err { border-color: var(--err); background: var(--err-bg); }
+  .log-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 700; }
+  .log-status-ok { color: var(--ok); }
+  .log-status-err { color: var(--err); }
+  .empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+  .toolbar { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar > div { flex: 1; min-width: 140px; }
+  small.hint { display: block; color: var(--muted); margin-top: 4px; }
+  .filtro-ativo { font-size: 12px; color: var(--accent); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+  <h1>Sistema Acadêmico - API de Alunos</h1>
+  <div class="subtitle">
+    API REST em PHP + MySQL feita para o desafio da Faculdade Senac. Esta página é
+    um painel de testes: consome a mesma API que a secretaria usaria, mostrando na
+    prática as respostas de sucesso e de erro.
+  </div>
+
+  <div class="card">
+    <h2>Endpoints da API</h2>
+    <table style="margin-bottom: 16px;">
+      <thead><tr><th>Método</th><th>Rota</th><th>O que faz</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET</code></td><td><code>index.php</code></td><td>Lista todos os alunos</td></tr>
+        <tr><td><code>GET</code></td><td><code>index.php?id=1</code></td><td>Busca um aluno específico</td></tr>
+        <tr><td><code>GET</code></td><td><code>index.php?curso=ADS</code></td><td>Filtra alunos por curso</td></tr>
+        <tr><td><code>POST</code></td><td><code>index.php</code></td><td>Cadastra um novo aluno (corpo JSON)</td></tr>
+        <tr><td><code>PUT</code></td><td><code>index.php?id=1</code></td><td>Atualiza um aluno (corpo JSON)</td></tr>
+        <tr><td><code>DELETE</code></td><td><code>index.php?id=1</code></td><td>Exclui um aluno</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Status</th><th>Situação</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pill pill-err">400</span></td><td>Campo obrigatório faltando ou e-mail inválido</td></tr>
+        <tr><td><span class="pill pill-err">404</span></td><td>Aluno não encontrado</td></tr>
+        <tr><td><span class="pill pill-err">409</span></td><td>E-mail já cadastrado em outro aluno</td></tr>
+        <tr><td><span class="pill pill-err">405</span></td><td>Método HTTP não suportado</td></tr>
+        <tr><td><span class="pill pill-err">500</span></td><td>Falha de conexão com o banco</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid">
+    <div>
+
+      <div class="card">
+        <h2 id="form-title">Cadastrar novo aluno</h2>
+        <form id="form-aluno">
+          <input type="hidden" id="aluno-id" value="" />
+          <label for="nome">Nome</label>
+          <input type="text" id="nome" placeholder="Ex: João Oliveira" />
+
+          <label for="email">E-mail</label>
+          <input type="email" id="email" placeholder="Ex: joao@email.com" />
+
+          <label for="curso">Curso</label>
+          <input type="text" id="curso" placeholder="Ex: ADS" />
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="btn-submit">Cadastrar</button>
+            <button type="button" class="btn-secondary" id="btn-cancelar" style="display:none;">Cancelar edição</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Testes rápidos de erro</h2>
+        <div class="test-buttons">
+          <button class="btn-secondary" id="teste-404">Buscar aluno inexistente → espera 404</button>
+          <button class="btn-secondary" id="teste-400">Cadastrar sem nome → espera 400</button>
+          <button class="btn-secondary" id="teste-409">Cadastrar e-mail duplicado (joao@email.com) → espera 409</button>
+          <button class="btn-secondary" id="teste-405">Método não suportado (PATCH) → espera 405</button>
+        </div>
+        <small class="hint">O teste de 409 só funciona se ainda existir um aluno com o e-mail joao@email.com.</small>
+      </div>
+
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Alunos</h2>
+
+        <div class="toolbar">
+          <div>
+            <label for="busca-id">Buscar por ID</label>
+            <input type="number" id="busca-id" placeholder="Ex: 1" />
+          </div>
+          <button class="btn-primary" id="btn-buscar-id">Buscar</button>
+        </div>
+
+        <div class="toolbar">
+          <div>
+            <label for="filtro-curso">Filtrar por curso</label>
+            <input type="text" id="filtro-curso" placeholder="Ex: ADS" />
+          </div>
+          <button class="btn-primary" id="btn-filtrar">Filtrar</button>
+          <button class="btn-secondary" id="btn-limpar-filtro">Mostrar todos</button>
+        </div>
+
+        <div class="toolbar">
+          <div>
+            <label for="busca-rapida">Busca rápida (nome ou e-mail, filtra o resultado atual)</label>
+            <input type="text" id="busca-rapida" placeholder="Digite pra filtrar sem consultar a API de novo..." />
+          </div>
+        </div>
+
+        <div class="filtro-ativo" id="filtro-ativo"></div>
+
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Nome</th><th>E-mail</th><th>Curso</th><th></th></tr>
+          </thead>
+          <tbody id="tabela-alunos"></tbody>
+        </table>
+        <div id="tabela-vazia" class="empty" style="display:none;">Nenhum aluno encontrado.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Log de requisições <span class="pill" id="contador-log">0</span></h2>
+    <div id="log"></div>
+  </div>
+
+<script>
+const API_URL = "index.php";
+const logEl = document.getElementById("log");
+const contadorLog = document.getElementById("contador-log");
+let totalLogs = 0;
+let ultimaListaCarregada = [];
+
+function agora() {
+  return new Date().toLocaleTimeString("pt-BR");
+}
+
+function registrarLog(metodo, url, status, corpoEnviado, respostaTexto) {
+  totalLogs++;
+  contadorLog.textContent = totalLogs;
+
+  const sucesso = status >= 200 && status < 300;
+  const entrada = document.createElement("div");
+  entrada.className = "log-entry " + (sucesso ? "log-ok" : "log-err");
+
+  let respostaFormatada = respostaTexto;
+  try {
+    respostaFormatada = JSON.stringify(JSON.parse(respostaTexto), null, 2);
+  } catch (e) {
+    // não era JSON, mostra como veio
+  }
+
+  entrada.innerHTML = `
+    <div class="log-head">
+      <span>${metodo} ${url}</span>
+      <span class="${sucesso ? "log-status-ok" : "log-status-err"}">${status || "SEM RESPOSTA"}</span>
+    </div>
+    <div>${agora()}</div>
+    ${corpoEnviado ? "<div>Enviado: " + escapeHtml(JSON.stringify(corpoEnviado)) + "</div>" : ""}
+    <div>Resposta: ${escapeHtml(respostaFormatada)}</div>
+  `;
+  logEl.prepend(entrada);
+}
+
+function escapeHtml(texto) {
+  const div = document.createElement("div");
+  div.textContent = texto;
+  return div.innerHTML;
+}
+
+async function chamarApi(metodo, url, corpo) {
+  let status = null;
+  let respostaTexto = "";
+  let dados = null;
+
+  try {
+    const opcoes = { method: metodo, headers: {} };
+    if (corpo !== undefined) {
+      opcoes.headers["Content-Type"] = "application/json";
+      opcoes.body = JSON.stringify(corpo);
+    }
+    const resposta = await fetch(url, opcoes);
+    status = resposta.status;
+    respostaTexto = await resposta.text();
+    try { dados = JSON.parse(respostaTexto); } catch (e) { dados = null; }
+  } catch (erroRede) {
+    respostaTexto = "Falha de rede: " + erroRede.message;
+  }
+
+  registrarLog(metodo, url, status, corpo, respostaTexto);
+  return { status, dados };
+}
+
+function renderizarTabela(lista) {
+  const corpoTabela = document.getElementById("tabela-alunos");
+  const vazio = document.getElementById("tabela-vazia");
+  corpoTabela.innerHTML = "";
+
+  if (!Array.isArray(lista) || lista.length === 0) {
+    vazio.style.display = "block";
+    return;
+  }
+  vazio.style.display = "none";
+
+  lista.forEach((aluno) => {
+    const linha = document.createElement("tr");
+    linha.innerHTML = `
+      <td>${aluno.id}</td>
+      <td>${escapeHtml(aluno.nome)}</td>
+      <td>${escapeHtml(aluno.email)}</td>
+      <td>${escapeHtml(aluno.curso)}</td>
+      <td class="row-actions">
+        <button class="btn-secondary btn-editar" data-id="${aluno.id}">Editar</button>
+        <button class="btn-danger btn-excluir" data-id="${aluno.id}">Excluir</button>
+      </td>
+    `;
+    corpoTabela.appendChild(linha);
+  });
+
+  corpoTabela.querySelectorAll(".btn-editar").forEach((btn) => {
+    btn.addEventListener("click", () => iniciarEdicao(lista.find(a => a.id == btn.dataset.id)));
+  });
+  corpoTabela.querySelectorAll(".btn-excluir").forEach((btn) => {
+    btn.addEventListener("click", () => excluirAluno(btn.dataset.id));
+  });
+}
+
+function aplicarBuscaRapida() {
+  const termo = document.getElementById("busca-rapida").value.trim().toLowerCase();
+  if (!termo) {
+    renderizarTabela(ultimaListaCarregada);
+    return;
+  }
+  const filtrada = ultimaListaCarregada.filter((aluno) =>
+    (aluno.nome || "").toLowerCase().includes(termo) ||
+    (aluno.email || "").toLowerCase().includes(termo)
+  );
+  renderizarTabela(filtrada);
+}
+
+async function carregarAlunos(opcoes = {}) {
+  let url = API_URL;
+  let descricaoFiltro = "Mostrando todos os alunos.";
+
+  if (opcoes.id) {
+    url = `${API_URL}?id=${encodeURIComponent(opcoes.id)}`;
+    descricaoFiltro = `Buscando pelo ID ${opcoes.id}.`;
+  } else if (opcoes.curso) {
+    url = `${API_URL}?curso=${encodeURIComponent(opcoes.curso)}`;
+    descricaoFiltro = `Filtrando pelo curso "${opcoes.curso}".`;
+  }
+
+  document.getElementById("filtro-ativo").textContent = descricaoFiltro;
+
+  const { status, dados } = await chamarApi("GET", url);
+
+  let lista = [];
+  if (opcoes.id) {
+    if (status === 200 && dados) lista = [dados];
+  } else if (status === 200 && Array.isArray(dados)) {
+    lista = dados;
+  }
+
+  ultimaListaCarregada = lista;
+  document.getElementById("busca-rapida").value = "";
+  renderizarTabela(lista);
+}
+
+function iniciarEdicao(aluno) {
+  document.getElementById("aluno-id").value = aluno.id;
+  document.getElementById("nome").value = aluno.nome;
+  document.getElementById("email").value = aluno.email;
+  document.getElementById("curso").value = aluno.curso;
+  document.getElementById("form-title").textContent = `Editando aluno #${aluno.id}`;
+  document.getElementById("btn-submit").textContent = "Salvar alteração";
+  document.getElementById("btn-cancelar").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function cancelarEdicao() {
+  document.getElementById("form-aluno").reset();
+  document.getElementById("aluno-id").value = "";
+  document.getElementById("form-title").textContent = "Cadastrar novo aluno";
+  document.getElementById("btn-submit").textContent = "Cadastrar";
+  document.getElementById("btn-cancelar").style.display = "none";
+}
+
+async function excluirAluno(id) {
+  if (!confirm(`Excluir o aluno #${id}?`)) return;
+  await chamarApi("DELETE", `${API_URL}?id=${id}`);
+  carregarAlunos();
+}
+
+document.getElementById("form-aluno").addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+  const id = document.getElementById("aluno-id").value;
+  const corpo = {
+    nome: document.getElementById("nome").value,
+    email: document.getElementById("email").value,
+    curso: document.getElementById("curso").value,
+  };
+
+  if (id) {
+    await chamarApi("PUT", `${API_URL}?id=${id}`, corpo);
+  } else {
+    await chamarApi("POST", API_URL, corpo);
+  }
+
+  cancelarEdicao();
+  carregarAlunos();
+});
+
+document.getElementById("btn-cancelar").addEventListener("click", cancelarEdicao);
+
+document.getElementById("btn-buscar-id").addEventListener("click", () => {
+  const id = document.getElementById("busca-id").value.trim();
+  if (!id) return;
+  carregarAlunos({ id });
+});
+
+document.getElementById("btn-filtrar").addEventListener("click", () => {
+  const curso = document.getElementById("filtro-curso").value.trim();
+  carregarAlunos({ curso });
+});
+document.getElementById("btn-limpar-filtro").addEventListener("click", () => {
+  document.getElementById("filtro-curso").value = "";
+  document.getElementById("busca-id").value = "";
+  carregarAlunos();
+});
+
+document.getElementById("busca-rapida").addEventListener("input", aplicarBuscaRapida);
+
+document.getElementById("teste-404").addEventListener("click", () => chamarApi("GET", `${API_URL}?id=999999`));
+document.getElementById("teste-400").addEventListener("click", () =>
+  chamarApi("POST", API_URL, { email: "sem.nome@email.com", curso: "ADS" })
+);
+document.getElementById("teste-409").addEventListener("click", () =>
+  chamarApi("POST", API_URL, { nome: "Outro Aluno", email: "joao@email.com", curso: "ADS" })
+);
+document.getElementById("teste-405").addEventListener("click", () => chamarApi("PATCH", API_URL));
+
+carregarAlunos();
+</script>
+</body>
+</html>
