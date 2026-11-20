@@ -10,6 +10,47 @@ falar com o MySQL do XAMPP e responde tudo em JSON.
 A apresentação está em [`docs/apresentacao/`](docs/apresentacao): os slides
 (`.pptx`) e o roteiro com o conteúdo e as falas de cada parte.
 
+![Painel de testes (index.html) consumindo a API: cadastro, listagem e log das requisições, incluindo um 404 e um 409](docs/media/painel.webp)
+
+## Como funciona
+
+```mermaid
+flowchart LR
+    C[Cliente<br/>painel index.html, Postman, curl] -->|HTTP + JSON| I[index.php<br/>roteia por método + query string<br/>valida o corpo]
+    I --> A[src/Aluno.php<br/>queries com PDO]
+    A --> DB[(MySQL<br/>sistema_academico.alunos)]
+    I --> R[src/Response.php<br/>JSON + status HTTP]
+    R --> C
+```
+
+```mermaid
+erDiagram
+    ALUNOS {
+        INT id PK "AUTO_INCREMENT"
+        VARCHAR(150) nome "NOT NULL"
+        VARCHAR(150) email "NOT NULL, UNIQUE"
+        VARCHAR(100) curso "NOT NULL"
+        TIMESTAMP criado_em "DEFAULT CURRENT_TIMESTAMP"
+    }
+```
+
+## Documentação da API (OpenAPI e Postman)
+
+| Arquivo | Como usar |
+|---|---|
+| [`docs/openapi.yaml`](docs/openapi.yaml) | Especificação OpenAPI 3.0 escrita a partir do `index.php`: rotas, corpos, exemplos e todos os erros. Para ver: cole em [editor.swagger.io](https://editor.swagger.io) ou rode `npx @redocly/cli@1.34.3 preview-docs docs/openapi.yaml` |
+| [`docs/postman/sistema-academico-api.postman_collection.json`](docs/postman/sistema-academico-api.postman_collection.json) | Coleção Postman v2.1 com as consultas, o CRUD e um request para cada erro (400, 404, 405, 409). Importe no Postman e ajuste a variável `baseUrl` (padrão `http://localhost:8000`) |
+| [`tests/requests.http`](tests/requests.http) | Os mesmos casos para a extensão REST Client do VS Code, com os `curl` equivalentes |
+
+Rodar sem XAMPP, com MySQL em Docker (o que foi usado para os testes e o print acima):
+
+```bash
+docker run -d --name mysql-academico -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -p 3307:3306 mysql:8.4
+docker exec -i mysql-academico mysql -uroot < database/schema.sql   # espere o MySQL subir antes
+DB_PORT=3307 php -S localhost:8000
+# painel: http://localhost:8000/index.html   API: http://localhost:8000/index.php
+```
+
 ## Testes realizados (16/11/2026)
 
 Rodados com `php -S` contra um MySQL 8.4 com o `database/schema.sql`:
@@ -43,8 +84,13 @@ sistema-academico-api/
 │   └── Response.php         # helpers pra responder em JSON com status HTTP certo
 ├── database/
 │   └── schema.sql           # cria o banco, a tabela e alguns dados de exemplo
-└── tests/
-    └── requests.http        # exemplos prontos de cada rota, incluindo os erros
+├── tests/
+│   └── requests.http        # exemplos prontos de cada rota, incluindo os erros
+└── docs/
+    ├── openapi.yaml         # especificação OpenAPI 3.0
+    ├── postman/             # coleção Postman v2.1
+    ├── media/               # print do painel
+    └── apresentacao/        # slides e roteiro
 ```
 
 A ideia da divisão em camadas é simples de explicar pro grupo inteiro:
@@ -149,10 +195,9 @@ php -S localhost:8000
 
 Depois acessem `http://localhost:8000/index.php`. **Atenção**: esse
 comando fica preso ao terminal aberto — fechando a janela ou a sessão,
-o servidor cai e o link para de funcionar. Também só serve
-`index.php`; o painel visual `index.html` (ver seção "Testando" abaixo)
-não funciona nesse modo, só via Apache. Pra uso do dia a dia da
-equipe, prefiram sempre a opção com Apache acima.
+o servidor cai e o link para de funcionar. O `.htaccess` não vale
+aqui, então a raiz abre a API (`index.php`) e o painel visual fica em
+`http://localhost:8000/index.html`. Pra uso do dia a dia da equipe, prefiram sempre a opção com Apache acima.
 
 ## Resolvendo problemas comuns do XAMPP
 
@@ -243,7 +288,7 @@ sudo chown -R $(whoami) /Applications/XAMPP/xamppfiles
 
 Se depois disso tudo o XAMPP continuar chato (Mac ou Windows), usem a
 "Alternativa sem Apache" lá em cima (`php -S`) — ela evita o Apache
-inteiro e resolve o desafio do mesmo jeito, só sem o painel visual.
+inteiro e resolve o desafio do mesmo jeito (o painel fica em `/index.html`).
 
 ## Configuração do banco
 
@@ -271,9 +316,9 @@ principais casos de erro (404, 400, 409, 405) e uma tabela de
 referência com todas as rotas e status de erro — ótimo pro papel de
 Analista/Validador e pra mostrar na apresentação.
 
-Como ela usa caminho relativo (`index.php`), só funciona rodando pelo
-Apache do XAMPP (não funciona abrindo o arquivo direto no navegador,
-nem com o `php -S`, a menos que renomeiem as chamadas).
+Como ela usa caminho relativo (`index.php`), precisa ser servida pelo
+PHP: Apache do XAMPP ou `php -S` (abrindo `/index.html`). Abrir o arquivo
+direto no navegador não funciona.
 
 Tem um `.htaccess` na pasta configurando o Apache pra abrir esse
 painel automaticamente quando vocês acessam a pasta sem especificar
