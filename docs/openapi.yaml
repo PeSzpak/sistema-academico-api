@@ -1,0 +1,185 @@
+openapi: 3.0.3
+info:
+  title: Sistema Acadêmico - API de Alunos
+  version: 1.0.0
+  description: |
+    API REST em PHP puro + MySQL (trabalho em equipe, Senac São José dos Pinhais).
+    Todas as rotas passam por `index.php`; a operação é escolhida pelo método HTTP
+    e pela query string (`id`, `curso`). Erros sempre no formato `{"erro": "..."}`.
+servers:
+  - url: http://localhost:8000
+    description: php -S localhost:8000
+  - url: http://localhost/sistema-academico-api
+    description: Apache do XAMPP
+security: []  # API sem autenticação
+tags:
+  - name: Alunos
+    description: CRUD da tabela `alunos`
+paths:
+  /index.php:
+    get:
+      tags: [Alunos]
+      summary: Lista alunos, busca por id ou filtra por curso
+      description: |
+        Sem parâmetros lista todos. Com `id` devolve um único aluno (objeto, não lista).
+        Com `curso` filtra pela igualdade exata do curso (desafio extra).
+      operationId: listarOuBuscarAlunos
+      parameters:
+        - $ref: '#/components/parameters/IdOpcional'
+        - name: curso
+          in: query
+          required: false
+          description: Filtra pelo curso (comparação exata, ex. `ADS`). Ignorado quando `id` é enviado.
+          schema: { type: string, example: ADS }
+      responses:
+        '200':
+          description: Lista de alunos, ou um aluno quando `id` é informado
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items: { $ref: '#/components/schemas/Aluno' }
+                  - $ref: '#/components/schemas/Aluno'
+              examples:
+                lista:
+                  value:
+                    - { id: 1, nome: João Oliveira, email: joao@email.com, curso: Engenharia de Software }
+                    - { id: 2, nome: Maria Souza, email: maria.souza@email.com, curso: ADS }
+                umAluno:
+                  value: { id: 1, nome: João Oliveira, email: joao@email.com, curso: Engenharia de Software }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '500': { $ref: '#/components/responses/ErroBanco' }
+    post:
+      tags: [Alunos]
+      summary: Cadastra um aluno
+      operationId: cadastrarAluno
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlunoEntrada' }
+            example: { nome: Ana Ribeiro, email: ana.ribeiro@email.com, curso: ADS }
+      responses:
+        '201':
+          description: Aluno criado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Aluno' }
+        '400': { $ref: '#/components/responses/Invalido' }
+        '409': { $ref: '#/components/responses/EmailDuplicado' }
+        '500': { $ref: '#/components/responses/ErroBanco' }
+    put:
+      tags: [Alunos]
+      summary: Atualiza um aluno (todos os campos obrigatórios)
+      operationId: atualizarAluno
+      parameters:
+        - $ref: '#/components/parameters/IdObrigatorio'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlunoEntrada' }
+            example: { nome: João Oliveira, email: joao.oliveira@email.com, curso: Engenharia de Software }
+      responses:
+        '200':
+          description: Aluno atualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Aluno' }
+        '400': { $ref: '#/components/responses/Invalido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '409': { $ref: '#/components/responses/EmailDuplicado' }
+        '500': { $ref: '#/components/responses/ErroBanco' }
+    delete:
+      tags: [Alunos]
+      summary: Exclui um aluno
+      operationId: excluirAluno
+      parameters:
+        - $ref: '#/components/parameters/IdObrigatorio'
+      responses:
+        '200':
+          description: Aluno excluído
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensagem: { type: string, example: Aluno excluído com sucesso }
+        '400': { $ref: '#/components/responses/Invalido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '500': { $ref: '#/components/responses/ErroBanco' }
+    patch:
+      tags: [Alunos]
+      summary: Não suportado (qualquer método fora de GET/POST/PUT/DELETE/OPTIONS)
+      operationId: metodoNaoSuportado
+      responses:
+        '405':
+          description: Método não suportado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+              example: { erro: Método não suportado }
+components:
+  parameters:
+    IdOpcional:
+      name: id
+      in: query
+      required: false
+      description: Id do aluno
+      schema: { type: integer, example: 1 }
+    IdObrigatorio:
+      name: id
+      in: query
+      required: true
+      description: Id do aluno. Sem ele a API responde 400.
+      schema: { type: integer, example: 1 }
+  schemas:
+    AlunoEntrada:
+      type: object
+      required: [nome, email, curso]
+      properties:
+        nome: { type: string, maxLength: 150 }
+        email: { type: string, format: email, maxLength: 150, description: Único na tabela }
+        curso: { type: string, maxLength: 100 }
+    Aluno:
+      allOf:
+        - type: object
+          required: [id]
+          properties:
+            id: { type: integer }
+        - $ref: '#/components/schemas/AlunoEntrada'
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro: { type: string }
+  responses:
+    Invalido:
+      description: JSON inválido, campo obrigatório faltando, e-mail inválido ou `id` ausente
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          examples:
+            semNome: { value: { erro: O campo nome é obrigatório } }
+            emailInvalido: { value: { erro: O campo email é inválido } }
+            jsonQuebrado: { value: { erro: JSON inválido no corpo da requisição } }
+            semId: { value: { erro: 'Informe o id do aluno na URL, ex: index.php?id=1' } }
+    NaoEncontrado:
+      description: Aluno não encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: Aluno não encontrado }
+    EmailDuplicado:
+      description: E-mail já usado por outro aluno
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: Já existe um aluno cadastrado com esse e-mail }
+    ErroBanco:
+      description: Falha de conexão com o MySQL ou erro inesperado na gravação
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: Falha ao conectar com o banco de dados. Verifique se o MySQL do XAMPP está rodando. }
